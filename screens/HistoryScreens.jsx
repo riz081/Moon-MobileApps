@@ -3,9 +3,12 @@ import React, { useEffect, useState } from 'react'
 import { useRoute } from '@react-navigation/native'
 import { COLORS, SIZES } from '../constants'
 import Lottie from 'lottie-react-native';
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../config';
 
 
 const HistoryScreens = () => {
+    const [email, setEmail] = useState(null);
     const route = useRoute()
     const {title} = route.params
     // console.log(route.params)
@@ -447,15 +450,30 @@ const HistoryScreens = () => {
     }
 
 
-  useEffect(() => {
-    fetchNitro()
-    fetchPota()
-    fetchPhospor()
-    fetchHumidity()
-    fetchTemp()
-    fetchConduct()
-    fetchPh()
-  }, [])
+    useEffect(() => {
+      fetchNitro()
+      fetchPota()
+      fetchPhospor()
+      fetchHumidity()
+      fetchTemp()
+      fetchConduct()
+      fetchPh()
+
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // User is logged in
+          console.log('User logged in:', user.email);
+          setEmail(user.email); // Set email state
+        } else {
+          // User is logged out
+          console.log('User logged out');
+          setEmail(null); // Clear email state
+          // Optionally, clear user data state here
+        }
+      });
+
+    return () => unsubscribe();
+    }, [auth, email])
 
   const renderHeader = () => (
     <View style={styles.card(COLORS.greenBamboo)}>
@@ -466,8 +484,8 @@ const HistoryScreens = () => {
       <View style={styles.body}>
         <Image source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} style={styles.avatar} />
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>Mr. Cody Fisher</Text>
-          <Text style={styles.userRole}>Professor</Text>
+          <Text style={styles.userName}>{email}</Text>
+          <Text style={styles.userRole}>User</Text>
         </View>
       </View>
     </View>

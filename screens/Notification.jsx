@@ -4,7 +4,7 @@ import { getNotificationInbox } from 'native-notify'
 import { COLORS, SIZES } from '../constants';
 import Lottie from 'lottie-react-native';
 
-const Notification = () => {
+const Notification = ({navigation}) => {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -48,8 +48,17 @@ const Notification = () => {
   const renderItem = ({ item }) => {
     // Split the date string into time and date components
     const [time, date] = item.date.split(', ');
+    const handlePress = () => {
+      // Conditionally navigate based on item.title
+      if (item.title === 'Moon - Daily Check') {
+        navigation.navigate('Classification');
+      } else if (item.title === 'Moon - New Post') {
+        navigation.navigate('Detection List');
+      }
+    };
+
     return(
-      <TouchableOpacity onPress={() => {}} style={styles.containerNotif}>
+      <TouchableOpacity onPress={handlePress} style={styles.containerNotif}>
         <View style={styles.notificationItem}>
           <View style={styles.wrapText}>
             <Text style={styles.title}>{item.title}</Text>

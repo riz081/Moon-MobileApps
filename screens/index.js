@@ -31,5 +31,5 @@ export {
     LoginScreen,
     RegisterScreen,
     ChangeScreen,
-    ForgotScreen
+    ForgotScreen,
 }

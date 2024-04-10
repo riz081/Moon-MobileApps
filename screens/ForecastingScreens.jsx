@@ -77,23 +77,6 @@ const ForecastingScreens = ({navigation}) => {
     );
   };
 
-  const sendNotification = async (output) => {
-    try {      
-      const response = await axios.post('https://app.nativenotify.com/api/notification', {
-        appId: 20518,
-        appToken: "Y0GCrXNxeqFauppwEJh2wT",
-        title: `Moon - ${user.email}`,
-        body: "Klasifikasi tanah berada pada level BURUK!!!",
-        dateSent: "4-1-2024 3:35AM"
-      });
-      console.log('Notification sent:', response.data);
-      // Navigate to the screen based on the output
-      navigation.navigate('Classification')
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
-  };
-
   // dummy function
   const determineCategory = (ph, lembap, temp, konduk, nitro, fosfor, potas) => {
     // Your conditions to determine the category
@@ -101,13 +84,11 @@ const ForecastingScreens = ({navigation}) => {
     if (ph < 100 || lembap < 100 || temp < 100 || konduk < 100 || nitro < 100 || fosfor < 100 || potas < 100) {
       output = 'Buruk';
       setPredictData(output);
-      // Send notification if output is 'Buruk'
-      // sendNotification(output);
     } else if (ph >= 100 && ph <= 110 && lembap >= 100 && lembap <= 110 && temp >= 100 && temp <= 110 && konduk >= 100 && konduk <= 110 && nitro >= 100 && nitro <= 110 && fosfor >= 100 && fosfor <= 110 && potas >= 100 && potas <= 110) {
       output = 'Cukup';
       setPredictData(output);
     } else {
-      output = 'Baik';
+      output = 'Subur';
       setPredictData(output);
     }
   };
@@ -266,16 +247,25 @@ const ForecastingScreens = ({navigation}) => {
               <NotificationsProvider/>
               <ChartCard title="Pie Chart" chartData={dataPie} />
               <Animated.View
-                style={{ ...styles.containerAnim, opacity: fadeAnim }}>
-                <Text style={styles.predictText}>{predictData}</Text>
-                <Text style={styles.descriptionText}>
-                  {predictData === 'Buruk'
-                    ? 'Tanah ini memiliki kondisi kurang subur. Dapat diperlukan perbaikan dan pemupukan untuk meningkatkan kualitas tanah.'
-                    : predictData === 'Cukup'
-                    ? 'Tanah ini memiliki kondisi cukup subur. Perhatikan kebutuhan tanaman dan lakukan pemeliharaan agar tanaman dapat tumbuh dengan baik.'
-                    : 'Tanah ini sangat subur! Cocok untuk pertanian atau kegiatan bercocok tanam lainnya.'}
-                </Text>
+                  style={[
+                      styles.containerAnim,
+                      { opacity: fadeAnim },
+                      predictData === 'Cukup' ? { backgroundColor: COLORS.yellow } : null,
+                      predictData === 'Subur' ? { backgroundColor: COLORS.greenOcean } : null
+                  ]}
+              >
+                  <Text style={styles.predictText}>{predictData}</Text>
+                  <Text style={styles.descriptionText}>
+                      {predictData === 'Buruk'
+                          ? 'Tanah ini memiliki kondisi kurang subur. Dapat diperlukan perbaikan dan pemupukan untuk meningkatkan kualitas tanah.'
+                          : predictData === 'Cukup'
+                          ? 'Tanah ini memiliki kondisi cukup subur. Perhatikan kebutuhan tanaman dan lakukan pemeliharaan agar tanaman dapat tumbuh dengan baik.'
+                          : predictData === 'Subur' 
+                          ? 'Tanah ini sangat subur! Cocok untuk pertanian atau kegiatan bercocok tanam lainnya.'
+                          : ''}
+                  </Text>
               </Animated.View>
+
             </GestureHandlerRootView>
           </>
         )}

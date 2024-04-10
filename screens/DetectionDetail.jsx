@@ -3,9 +3,11 @@ import {
     Text, 
     Image, 
     StyleSheet,
-    SafeAreaView
+    SafeAreaView,
+    Animated,
+    ScrollView
   } from 'react-native';
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRoute } from '@react-navigation/native'
 import { COLORS, SIZES } from '../constants';
 
@@ -14,12 +16,18 @@ const DetectionDetail = () => {
     const route = useRoute()
     const { data } = route.params
     console.log(data)
+    const [fadeAnim] = useState(new Animated.Value(0));
 
+    Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+    }).start();
 
   return (
     <SafeAreaView>
         {data && (
-            <View>
+            <ScrollView>
                 <Image
                     style={{  
                         width: SIZES.width,
@@ -70,33 +78,29 @@ const DetectionDetail = () => {
                     </View>
                     </View>
                     {/* Class Box */}
-                    <View style={{ flexDirection : 'row' }}>
-                    <View style={{ width: '28%' }}>
-                        <Text style={{ fontFamily : 'semibold', fontSize : 14, color : COLORS.black }}>Class </Text>
-                    </View>
-                    <View style={{ width: '7%' }}>
-                        <Text style={{ fontFamily : 'semibold', fontSize : 14, color : COLORS.black }}>: </Text>
-                    </View>
-                    <View style={{ width: '34%' }}>
-                        <Text style={{ fontFamily : 'semibold', fontSize : 14, color : COLORS.black }}>{data.class}</Text>
-                    </View>
-                    </View>            
+                    <Animated.View style={[
+                        styles.containerAnim,
+                        { opacity: fadeAnim },
+                        data.class === 'Melon Sehat' ? { backgroundColor: COLORS.greenOcean, borderColor: COLORS.greenBamboo } : null
+                    ]}>
+                        <Text style={[
+                            styles.predictText,
+                            data.class === 'Melon Sehat' ? { color: COLORS.lightWhite } : null
+                        ]}>Data Result</Text>
+                        <Text style={[
+                            styles.descriptionText,
+                            data.class === 'Melon Sehat' ? { color: COLORS.lightWhite } : null
+                        ]}>
+                            {data.class === 'Melon Sehat'
+                                ? `Panen melon terbaru! 🌱✨ Prediksi: "${data.class}" dengan nilai ${data.confidence}%. Rawat dengan kasih, dapatkan panen berkualitas! 🍈🌿`
+                                : data.class === 'Melon Sakit'
+                                ? `Tanaman melon sakit. 🥀 Prediksi: "${data.class}" dengan keyakinan ${data.confidence}%. Segera konsultasi ahli pertanian untuk solusi terbaik. 🍈🌱 #MelonSakit #PerawatanCerdas`
+                                : null}
+                        </Text>
+                    </Animated.View>
 
-                    {/* Custom Text for "Melon Sehat" */}
-                    {data.class === "Melon Sehat" && (
-                    
-                    <Text style={{fontFamily: 'regular', fontSize: 14, color: COLORS.gray}}>
-                    Panen melon terbaru! 🌱✨ Prediksi: "<Text style={{fontFamily: 'bold'}}>{data.class}</Text>" dengan nilai <Text style={{fontFamily: 'bold'}}>{data.confidence}%</Text>. Rawat dengan kasih, dapatkan panen berkualitas! 🍈🌿
-                    </Text>
-                    )}
-                    {/* Custom Text for "Melon Sakit" */}
-                    {data.class === "Melon Sakit" && (
-                    <Text style={{fontFamily: 'regular', fontSize: 14, color: COLORS.gray}}>
-                        Tanaman melon sakit. 🥀 Prediksi: "<Text style={{fontFamily: 'bold'}}>{data.class}</Text>" dengan keyakinan <Text style={{fontFamily: 'bold'}}>{data.confidence}%</Text>. Segera konsultasi ahli pertanian untuk solusi terbaik. 🍈🌱 #MelonSakit #PerawatanCerdas
-                    </Text>
-                    )}
                 </View> 
-            </View>
+            </ScrollView>
         )}
         
     </SafeAreaView>
@@ -105,4 +109,26 @@ const DetectionDetail = () => {
 
 export default DetectionDetail
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+    containerAnim: {
+        padding: 20,
+        backgroundColor: '#f8d7da',
+        borderRadius: 10,
+        margin: 10,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#d9534f',
+    },
+    predictText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: '#721c24',
+    },
+    descriptionText: {
+        fontSize: 16,
+        textAlign: 'center',
+        color: '#721c24',
+        fontStyle: 'italic',
+    },
+});

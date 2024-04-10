@@ -17,7 +17,7 @@ import {
   LoginScreen,
   RegisterScreen,
   ChangeScreen,
-  ForgotScreen
+  ForgotScreen,
 } from './screens';
 import { CustomHeader } from './components';
 import registerNNPushToken from 'native-notify';
