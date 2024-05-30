@@ -14,6 +14,7 @@ import LoginScreen from "./LoginScreen";
 import RegisterScreen from "./RegisterScreen";
 import ChangeScreen from "./ChangeScreen";
 import ForgotScreen from "./ForgotScreen";
+import ChartScreens from "./ChartScreens";
 
 export {
     Home,
@@ -32,4 +33,5 @@ export {
     RegisterScreen,
     ChangeScreen,
     ForgotScreen,
+    ChartScreens
 }

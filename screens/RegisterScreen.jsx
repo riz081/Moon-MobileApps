@@ -8,7 +8,9 @@ import {
   TextInput,
   Alert,
   StyleSheet,
-  TouchableOpacity
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform // Import Platform
 } from 'react-native'
 import { signUp, signIn } from '../AuthService';
 import { COLORS, SIZES } from '../constants'
@@ -64,84 +66,90 @@ const RegisterScreen = ({navigation}) => {
 
 
   return (
-    <ScrollView>
-      <GestureHandlerRootView>
-        <SafeAreaView style={{marginHorizontal : 20}}>
-          <NotificationsProvider />
-          <View>
-            <Image
-              source={require('../assets/images/register.png')}
-              style={styles.cover}
-            />
-            <Text style={styles.title}>melon monitoring application</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"} // Adjust behavior based on platform
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : SIZES.height * 0.3} // Adjust offset to 30% of screen height for Android
+    >
+      <ScrollView>
+        <GestureHandlerRootView>
+          <SafeAreaView style={{marginHorizontal : 20}}>
+            <NotificationsProvider />
             <View>
-              <View style={styles.wrapper}>
-                <Text style={styles.label}>email</Text>
-                <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons
-                    name = 'email-outline'
-                    size={22}
-                    style = {styles.iconStyle}
-                  />
-
-                  <TextInput
-                    placeholder='Enter email'
-                    value={email}
-                    onChangeText={text => setEmail(text.replace(/ /g,""))}
-                    secureTextEntry={false}
-                    activeLineWidth={0}
-                    lineWidth={0}
-                    maxLength={100}
-                    labelFontSize={16} 
-                    placeholderTextColor={'grey'}
-                    style = {{flex : 1}}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.wrapper}>
-                <Text style={styles.label}>password</Text>
-                <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons
-                    name='lock-outline'
-                    size={22}
-                    color={COLORS.gray}
-                    style={styles.iconStyle}
-                  />
-
-                  <TextInput
-                    secureTextEntry={eye.secure}
-                    placeholder='Password'
-                    value={password}
-                    onChangeText={text => setPassword(text.replace(/ /g,""))}
-                    activeLineWidth={0}
-                    lineWidth={0}
-                    labelFontSize={16} 
-                    keyboardType="number-pad"
-                    maxLength={8}
-                    placeholderTextColor={'grey'}
-                    style={{flex : 1}}
-                  />
-
-                  <TouchableOpacity underlayColor="" onPress={()=> showhide()}>
-                    <Ionicons name={eye.icon} size={22} color="grey" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Button
-                // loader={loadingBar}
-                title={"R E G I S T E R"}
-                onPress={handleSignUp}
+              <Image
+                source={require('../assets/images/register.png')}
+                style={styles.cover}
               />
-              <TouchableOpacity style={{justifyContent : 'center', alignItems : 'center'}} onPress={handleSignIn}>
-                <Text>Sign In</Text>
-              </TouchableOpacity>
+              <Text style={styles.title}>melon monitoring application</Text>
+              <View>
+                <View style={styles.wrapper}>
+                  <Text style={styles.label}>email</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons
+                      name = 'email-outline'
+                      size={22}
+                      style = {styles.iconStyle}
+                    />
+
+                    <TextInput
+                      placeholder='Enter email'
+                      value={email}
+                      onChangeText={text => setEmail(text.replace(/ /g,""))}
+                      secureTextEntry={false}
+                      activeLineWidth={0}
+                      lineWidth={0}
+                      maxLength={100}
+                      labelFontSize={16} 
+                      placeholderTextColor={'grey'}
+                      style = {{flex : 1}}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.wrapper}>
+                  <Text style={styles.label}>password</Text>
+                  <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons
+                      name='lock-outline'
+                      size={22}
+                      color={COLORS.gray}
+                      style={styles.iconStyle}
+                    />
+
+                    <TextInput
+                      secureTextEntry={eye.secure}
+                      placeholder='Password'
+                      value={password}
+                      onChangeText={text => setPassword(text.replace(/ /g,""))}
+                      activeLineWidth={0}
+                      lineWidth={0}
+                      labelFontSize={16} 
+                      keyboardType="number-pad"
+                      maxLength={8}
+                      placeholderTextColor={'grey'}
+                      style={{flex : 1}}
+                    />
+
+                    <TouchableOpacity underlayColor="" onPress={()=> showhide()}>
+                      <Ionicons name={eye.icon} size={22} color="grey" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <Button
+                  // loader={loadingBar}
+                  title={"R E G I S T E R"}
+                  onPress={handleSignUp}
+                />
+                <TouchableOpacity style={{justifyContent : 'center', alignItems : 'center'}} onPress={handleSignIn}>
+                  <Text>Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </SafeAreaView>
-      </GestureHandlerRootView>
-    </ScrollView>
+          </SafeAreaView>
+        </GestureHandlerRootView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 

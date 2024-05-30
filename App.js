@@ -18,6 +18,7 @@ import {
   RegisterScreen,
   ChangeScreen,
   ForgotScreen,
+  ChartScreens
 } from './screens';
 import { CustomHeader } from './components';
 import registerNNPushToken from 'native-notify';
@@ -173,6 +174,17 @@ export default function App() {
           options={{
             header: () => (
               <CustomHeader title='Forgot Password' showBackButton={true} showNotifications={false} showSettings={false} />
+            ),
+            headerShown: true,
+          }}
+        />
+
+        <Stack.Screen
+          name='Chart'
+          component={ ChartScreens }
+          options={{
+            header: () => (
+              <CustomHeader title='Detail Graphic' showBackButton={true} showNotifications={false} showSettings={false} />
             ),
             headerShown: true,
           }}

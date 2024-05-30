@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { getNotificationInbox } from 'native-notify'
 import { COLORS, SIZES } from '../constants';
 import Lottie from 'lottie-react-native';
+import { db } from '../config';
+import { ref, onValue, remove, set } from 'firebase/database';
 
 const Notification = ({navigation}) => {
   const [data, setData] = useState([]);
@@ -14,55 +16,96 @@ const Notification = ({navigation}) => {
     fetchNotifications();
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const fetchedNotifications = await getNotificationInbox(20518, 'Y0GCrXNxeqFauppwEJh2wT');
-      setData(fetchedNotifications);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
+  const fetchNotifications = () => {
+    const notificationsRef = ref(db, 'notifications');
+    onValue(notificationsRef, (snapshot) => {
+      const notifications = [];
+      snapshot.forEach((childSnapshot) => {
+        const childData = childSnapshot.val();
+        notifications.push({
+          notification_id: childSnapshot.key,
+          ...childData,
+        });
+      });
+      setData(notifications);
       setIsLoading(false);
-      setIsRefreshing(false); // Set refreshing state to false when data fetching is completed
-    }
+      setIsRefreshing(false);
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    });
   };
-  
+
+  const deleteNotification = (notificationId) => {
+    const notificationRef = ref(db, `notifications/${notificationId}`);
+    remove(notificationRef)
+      .then(() => {
+        Alert.alert('Notification deleted successfully');
+      })
+      .catch((error) => {
+        console.error('Error deleting notification:', error);
+        Alert.alert('Error deleting notification');
+      });
+  };
+
+  const handleLongPress = (notificationId) => {
+    Alert.alert(
+      'Delete Notification',
+      'Are you sure you want to delete this notification?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          onPress: () => deleteNotification(notificationId),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleFilter = (type) => {
     setFilterType(type);
   };
 
   const filteredData = () => {
-    if (filterType === 'daily') {
-      return data.filter(item => item.title === 'Moon - Daily Check');
-    } else if (filterType === 'post') {
-      return data.filter(item => item.title === 'Moon - New Post');
+    if (filterType === 'Watering') {
+      return data.filter(item => item.title === 'Moon - Watering');
+    } else if (filterType === 'Detection') {
+      return data.filter(item => item.title === 'Moon - Detection');
     } else {
       return data;
     }
   };
 
   const onRefresh = () => {
-    setIsRefreshing(true); // Set refreshing state to true when pull-to-refresh is triggered
-    fetchNotifications(); // Fetch notifications again
+    setIsRefreshing(true);
+    fetchNotifications();
   };
-  
+
   const renderItem = ({ item }) => {
-    // Split the date string into time and date components
-    const [time, date] = item.date.split(', ');
+    const [time, date] = item.dateSent.split(', ');
     const handlePress = () => {
-      // Conditionally navigate based on item.title
-      if (item.title === 'Moon - Daily Check') {
+      if (item.title === 'Moon - Watering') {
         navigation.navigate('Classification');
-      } else if (item.title === 'Moon - New Post') {
+      } else if (item.title === 'Moon - Detection') {
         navigation.navigate('Detection List');
       }
     };
 
-    return(
-      <TouchableOpacity onPress={handlePress} style={styles.containerNotif}>
+    return (
+      <TouchableOpacity
+        onPress={handlePress}
+        onLongPress={() => handleLongPress(item.notification_id)}
+        style={styles.containerNotif}
+      >
         <View style={styles.notificationItem}>
           <View style={styles.wrapText}>
             <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.message}>{item.message}</Text>
+            <Text style={styles.message}>{item.body}</Text>
             <View style={styles.dateContainer}>
               <Text style={styles.time}>{time}</Text>
               <Text style={styles.time}>-</Text>
@@ -72,7 +115,7 @@ const Notification = ({navigation}) => {
         </View>
       </TouchableOpacity>
     );
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -96,23 +139,24 @@ const Notification = ({navigation}) => {
               <Text style={[styles.filterButtonText, filterType === 'all' && styles.activeFilterButtonText]}>All</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterType === 'daily' && styles.activeFilterButton]}
-              onPress={() => handleFilter('daily')}
+              style={[styles.filterButton, filterType === 'Watering' && styles.activeFilterButton]}
+              onPress={() => handleFilter('Watering')}
             >
-              <Text style={[styles.filterButtonText, filterType === 'daily' && styles.activeFilterButtonText]}>Daily</Text>
+              <Text style={[styles.filterButtonText, filterType === 'Watering' && styles.activeFilterButtonText]}>Watering</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterType === 'post' && styles.activeFilterButton]}
-              onPress={() => handleFilter('post')}
+              style={[styles.filterButton, filterType === 'Detection' && styles.activeFilterButton]}
+              onPress={() => handleFilter('Detection')}
             >
-              <Text style={[styles.filterButtonText, filterType === 'post' && styles.activeFilterButtonText]}>Post</Text>
+              <Text style={[styles.filterButtonText, filterType === 'Detection' && styles.activeFilterButtonText]}>Detection</Text>
             </TouchableOpacity>
           </View>
           <FlatList
+            style = {{marginBottom : SIZES.xLarge * 2}}
             data={filteredData()}
             renderItem={renderItem}
             keyExtractor={(item) => item.notification_id.toString()}
-            refreshControl={ // Add RefreshControl for pull-to-refresh
+            refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={onRefresh}
@@ -124,14 +168,14 @@ const Notification = ({navigation}) => {
         </View>
       )}
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default Notification
+export default Notification;
 
 const styles = StyleSheet.create({
-  container : {
-    flex : 1
+  container: {
+    flex: 1,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -160,19 +204,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   notificationItem: {
-    flexDirection: 'row', // Make the container a row
-    alignItems: 'center', // Align items vertically
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
     paddingBottom: 10,
     marginBottom: 10,
-    justifyContent: 'space-between', // Space evenly between children
+    justifyContent: 'space-between',
   },
   wrapText: {
-    flex: 1, // Take remaining space
-  },
-  wrapButton: {
-    marginLeft: 10, // Add some margin between text and button
+    flex: 1,
   },
   title: {
     fontSize: 18,
@@ -187,15 +228,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  deleteContainer: {
-    backgroundColor: COLORS.red,
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 3,
-  },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -207,8 +239,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   loadingAnimation: {
-    width: SIZES.width /2,
-    height: SIZES.height /2,
+    width: SIZES.width / 2,
+    height: SIZES.height / 2,
     zIndex: 2,
   },
   dateContainer: {
@@ -216,7 +248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   time: {
-    marginRight: 5, // Adjust spacing between time and date
+    marginRight: 5,
   },
   date: {
     color: '#666',

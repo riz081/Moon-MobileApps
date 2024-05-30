@@ -49,7 +49,7 @@ const HistoryScreens = () => {
 
           // convert to date time
           const year = parseInt(ct.substr(0, 4), 10);
-          const month = parseInt(ct.substr(4, 2), 10) - 1; // Months are zero-indexed
+          const month = parseInt(ct.substr(4, 2), 10); // Months are zero-indexed
           const day = parseInt(ct.substr(6, 2), 10);
           // convert day
           const intDay = parseInt(ct.substr(6, 2), 10);
@@ -232,7 +232,7 @@ const HistoryScreens = () => {
 
           // convert to date time
           const year = parseInt(ct.substr(0, 4), 10);
-          const month = parseInt(ct.substr(4, 2), 10) - 1; // Months are zero-indexed
+          const month = parseInt(ct.substr(4, 2), 10); // Months are zero-indexed
           const day = parseInt(ct.substr(6, 2), 10);
           // convert day
           const intDay = parseInt(ct.substr(6, 2), 10);
@@ -260,8 +260,6 @@ const HistoryScreens = () => {
             tahun : year
           };
         });
-      
-        // console.log('fetch nitro : '+ data)
         setLoading(false)
         setDataHumidity(data)
     }

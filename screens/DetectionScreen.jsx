@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, TextInput, Button, Modal, FlatList } from 'react-native';
 import { db } from '../config';
 import { ref, onValue, remove, set } from 'firebase/database';
-import { COLORS } from '../constants';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { createNotifications } from 'react-native-notificated'
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getStorage, ref as storageRef, listAll, getDownloadURL, deleteObject } from 'firebase/storage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { createNotifications } from 'react-native-notificated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { COLORS, SIZES } from '../constants';
 
 const { useNotifications, NotificationsProvider } = createNotifications({
   isNotch: true,
@@ -16,65 +16,62 @@ const { useNotifications, NotificationsProvider } = createNotifications({
 const DetectionScreen = ({ navigation }) => {
   const { notify } = useNotifications();
   const [data, setData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [imageUrls, setImageUrls] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userEmails, setUserEmails] = useState([]);
+  const [selectedUserEmail, setSelectedUserEmail] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     const startCountRef = ref(db, 'data/');
     const unsubscribe = onValue(startCountRef, (snapshot) => {
       const dataKu = snapshot.val() || {};
-      let newData = Object.values(dataKu);
-      
-      // Sort the data by timestamp from the latest to the oldest
-      newData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
+      const newData = Object.values(dataKu).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       setData(newData);
+      setFilteredData(newData); // Initialize filtered data with all data
+      // Extract user emails
+      const emails = newData.map(item => item.userEmail);
+      setUserEmails([...new Set(emails)]); // Remove duplicates using Set
     });
 
-    const storage = getStorage();
-    const listRef = storageRef(storage, 'images/');
-    listAll(listRef)
-      .then((res) => {
-        const urls = [];
-        res.items.forEach((itemRef, index) => {
-          getDownloadURL(itemRef)
-            .then((url) => {
-              urls.push(url);
-              setImageUrls(urls);
-              if (index === res.items.length - 1) {
-                setLoading(false);
-              }
-            })
-            .catch((error) => {
-              console.error('Error fetching image URL:', error);
-            });
-        });
-      })
-      .catch((error) => {
-        console.error('Error listing images:', error);
-      });
+    fetchImageUrls();
 
     return () => unsubscribe();
   }, []);
 
-  const deleteImage = async (item) => {
+  useEffect(() => {
+    // Filter data based on search query
+    const filtered = data.filter(item =>
+      (item.id && item.id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.plantsId && item.plantsId.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+    setFilteredData(filtered);
+  }, [searchQuery, data]);
+
+  const fetchImageUrls = async () => {
     try {
-      // Delete data from Realtime Database
+      const storage = getStorage();
+      const listRef = storageRef(storage, 'images/');
+      const res = await listAll(listRef);
+      const urls = await Promise.all(res.items.map(itemRef => getDownloadURL(itemRef)));
+      setImageUrls(urls);
+    } catch (error) {
+      console.error('Error fetching image URLs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteItem = async (item) => {
+    try {
       await remove(ref(db, `data/${item.id}`));
-  
-      // Check if the image exists in Firebase Storage
+
       const storage = getStorage();
       const imageStorageRef = storageRef(storage, `images/${item.id}`);
-      const imageUrl = await getDownloadURL(imageStorageRef);
-  
-      if (imageUrl) {
-        // Image exists, so delete it from Firebase Storage
-        await deleteObject(imageStorageRef);
-      } else {
-        // Image does not exist
-        console.log('Image does not exist in Firebase Storage');
-      }
-  
+      await deleteObject(imageStorageRef);
+
       console.log('Data and image deleted successfully');
       notify('info', {
         params: {
@@ -82,6 +79,9 @@ const DetectionScreen = ({ navigation }) => {
           title: 'Info',
         },
       });
+
+      // Refresh data after deletion
+      fetchImageUrls();
     } catch (error) {
       console.error('Error deleting data and image:', error);
       notify('error', {
@@ -91,37 +91,43 @@ const DetectionScreen = ({ navigation }) => {
         },
       });
     }
-  };  
+  };
+
+  const confirmDeleteItem = (item) => {
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'OK',
+          onPress: () => deleteItem(item),
+        },
+      ],
+      { cancelable: false }
+    );
+  };
 
   const deleteAllData = async () => {
     try {
       const dataRef = ref(db, 'data/');
-  
-      // Delete all data from Realtime Database
       await set(dataRef, {});
-  
-      console.log('All data deleted successfully from Realtime Database');
-  
-      // Delete all images from Firebase Storage
+
       const storage = getStorage();
       const imagesRef = storageRef(storage, 'images/');
       const imageRefs = await listAll(imagesRef);
-  
-      const deleteImagePromises = imageRefs.items.map(async (imageRef) => {
-        await deleteObject(imageRef);
-        console.log('Image deleted:', imageRef.name);
-      });
-  
-      await Promise.all(deleteImagePromises);
-  
-      console.log('All images deleted successfully from Firebase Storage');
-  
+      await Promise.all(imageRefs.items.map(imageRef => deleteObject(imageRef)));
+
+      console.log('All data and images deleted successfully');
       notify('info', {
         params: {
           description: 'All data and images deleted successfully.',
           title: 'Info',
         },
       });
+
+      // Refresh data after deletion
+      fetchImageUrls();
     } catch (error) {
       console.error('Error deleting all data and images:', error);
       notify('error', {
@@ -151,97 +157,174 @@ const DetectionScreen = ({ navigation }) => {
     );
   };
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView>
-        <GestureHandlerRootView>
-          <NotificationsProvider/>
-          <View style={{ flexDirection: 'column', margin: 1, gap: 5, padding: 25 }}>
-            {data && data.length > 0 ? (
-              data.map((item, index) => (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Detection Detail', { data: item })}
-                  key={index}
-                  style={{ flexDirection: 'row', marginVertical: 15 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                  ) : (
-                    <React.Fragment>
-                      {imageUrls.length > 0 && imageUrls[index] ? (
-                        <Image style={{ width: 88, height: 88, borderRadius: 50 }} source={{ uri: imageUrls[index] }} />
-                      ) : <Image style={{ width: 88, height: 88, borderRadius: 50 }} source={{ uri: imageUrls[index] }} />}
-                    </React.Fragment>
-                  )}
+  // Filter data by user email
+  const filterDataByUserEmail = (email) => {
+    if (email === selectedUserEmail) {
+      // If the same email is clicked again, show all data
+      setSelectedUserEmail('');
+      setFilteredData(data);
+    } else {
+      // Filter data by the selected email
+      setSelectedUserEmail(email);
+      const filtered = data.filter(item => item.userEmail === email);
+      setFilteredData(filtered);
+    }
+  };
 
-                  <View style={{ flexDirection: 'row', marginHorizontal: 15, alignItems: 'center', justifyContent: 'center' }}>
-                    <View style={{ flexDirection: 'column' }}>
-                      <Text style={{ fontWeight: 'bold' }}>{item.id}</Text>
-                      <Text style={{ fontWeight: 'semibold', color: COLORS.black, marginTop: 6 }}>{item.userEmail}</Text>
-                      <Text style={{ fontWeight: 'regular', color: COLORS.gray, marginTop: 10 }}>{item.timestamp}</Text>
-                    </View>
-                    <View style={{ right: -45 }}>
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: COLORS.red,
-                          width: 42,
-                          height: 42,
-                          borderRadius: 10,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: 3,
-                        }}
-                        onPress={() => {
-                          Alert.alert(
-                            'Delete Image',
-                            'Are you sure you want to delete this image?',
-                            [
-                              {
-                                text: 'Cancel',
-                                style: 'cancel',
-                              },
-                              {
-                                text: 'OK',
-                                onPress: () => deleteImage(item),
-                              },
-                            ],
-                            { cancelable: false }
-                          );
-                        }}
-                      >
-                        <Ionicons name='trash' size={24} color={COLORS.lightWhite} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', top: 35 }}>
-                <Text style={{ fontSize: 28, fontWeight: 'bold', color: COLORS.greenBamboo }}>410</Text>
-                <Text style={{ fontSize: 28, fontWeight: 'bold', color: COLORS.greenBamboo }}>Data is Gone</Text>
-                <Image source={require('../assets/images/networkError.png')} />
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NotificationsProvider />
+      <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={24} color={COLORS.gray} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by ID or Plants ID"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close" size={24} color={COLORS.gray} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <TouchableOpacity style={styles.filterButton} onPress={() => setModalVisible(true)}>
+          <Text style={styles.filterButtonText}>
+            <Ionicons
+              name='filter-outline'
+              size={18}
+            />
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 25 }}>
+        {loading ? (
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        ) : filteredData.length > 0 ? (
+          filteredData.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => navigation.navigate('Detection Detail', { data: item, imageUri: imageUrls[index] })}
+              onLongPress={() => confirmDeleteItem(item)}
+              style={styles.itemContainer}
+            >
+              <Image
+                style={styles.image}
+                source={{ uri: imageUrls[index] || 'https://via.placeholder.com/88' }}
+              />
+              <View style={styles.itemDetails}>
+                <Text style={styles.itemId}>{item.id}</Text>
+                <Text style={styles.itemEmail}>{item.userEmail}</Text>
+                <Text style={styles.itemTimestamp}>{item.timestamp}</Text>
               </View>
-            )}
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>410</Text>
+            <Text style={styles.noDataText}>Data is Gone</Text>
+            <Image source={require('../assets/images/networkError.png')} />
           </View>
-        </GestureHandlerRootView>
+        )}
       </ScrollView>
 
-      {/* Floating button */}
-      {data && data.length > 0 ? (
-        <TouchableOpacity
-          style={styles.floatingButton}
-          onPress={formatConfirm}
-        >
-          <Text style={{ color: COLORS.lightWhite, fontSize: 16, fontWeight: 'bold' }}>Delete All</Text>
+      {filteredData.length > 0 && (
+        <TouchableOpacity style={styles.floatingButton} onPress={formatConfirm}>
+          <Text style={styles.floatingButtonText}>Delete All</Text>
         </TouchableOpacity>
-      ) : null}
-    </View>
+      )}
+      
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Select User Email</Text>
+            <FlatList
+              data={userEmails}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.emailButton}
+                  onPress={() => {
+                    filterDataByUserEmail(item);
+                    setModalVisible(!modalVisible);
+                  }}
+                >
+                  <Text style={styles.emailButtonText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+              keyExtractor={(item, index) => index.toString()}
+            />
+            <TouchableOpacity
+              style={styles.emailButton}
+              onPress={() => {
+                // Show all data
+                setSelectedUserEmail('');
+                setFilteredData(data);
+                setModalVisible(!modalVisible);
+              }}
+            >
+              <Text style={styles.emailButtonText}>Show All</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </GestureHandlerRootView>
   );
 };
 
 export default DetectionScreen;
 
 const styles = StyleSheet.create({
+  itemContainer: {
+    flexDirection: 'row',
+    marginVertical: 15,
+  },
+  image: {
+    width: 88,
+    height: 88,
+    borderRadius: 50,
+  },
+  itemDetails: {
+    flexDirection: 'column',
+    marginHorizontal: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemId: {
+    fontWeight: 'bold',
+    marginRight: 20
+  },
+  itemEmail: {
+    fontWeight: '600',
+    color: COLORS.black,
+    marginTop: 6,
+    marginRight: 20
+  },
+  itemTimestamp: {
+    fontWeight: '400',
+    color: COLORS.gray,
+    marginTop: 10,
+    marginLeft: 10
+  },
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    top: 35,
+  },
+  noDataText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.greenBamboo,
+  },
   floatingButton: {
     position: 'absolute',
     bottom: 16,
@@ -253,5 +336,83 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  floatingButtonText: {
+    color: COLORS.lightWhite,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16, // Adjust as needed
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    flex: 1,
+    borderWidth : 1,
+    borderColor : COLORS.greenBamboo,
+    marginRight : SIZES.xSmall
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: COLORS.black,
+  },
+  filterButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  filterButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Modal styles
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  emailButton: {
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 5,
+    width: 200,
+    alignItems: 'center',
+  },
+  emailButtonText: {
+    fontWeight: 'bold',
   },
 });

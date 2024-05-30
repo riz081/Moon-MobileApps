@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, TouchableOpacity, useWindowDimensions } from 'react-native'
+import { StyleSheet, Text, View, Image, TouchableOpacity, useWindowDimensions, Platform } from 'react-native'
 import React, { useState } from 'react'
 import { useRoute } from '@react-navigation/native'
 import { COLORS, SIZES } from '../constants'

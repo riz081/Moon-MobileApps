@@ -23,7 +23,7 @@ import Lottie from 'lottie-react-native';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { createNotifications } from 'react-native-notificated'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { ref as dbRef, set } from 'firebase/database';
+import { ref as dbRef, set, push } from 'firebase/database';
 import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { initializeApp } from 'firebase/app';
 // import UploadMediaFile from './UploadMediaFile';
@@ -160,11 +160,21 @@ const Detection = ({navigation}) => {
       const response = await axios.post('https://app.nativenotify.com/api/notification', {
         appId: 20518,
         appToken: "Y0GCrXNxeqFauppwEJh2wT",
-        title: `Moon - New Post`,
+        title: `Moon - Detection`,
         body: `${email} telah melakukan post!`,
         dateSent: formattedDate
       });
       console.log('Notification sent:', response.data);
+
+      // Save notification details in Firebase Realtime Database
+      const notificationsRef = dbRef(db, 'notifications');
+      await push(notificationsRef, {
+        title: `Moon - Detection`,
+        body: `${email} telah melakukan post!`,
+        dateSent: formattedDate
+      });
+
+      console.log('Notification saved to Firebase');
     } catch (error) {
       console.error('Error sending notification:', error);
     }
